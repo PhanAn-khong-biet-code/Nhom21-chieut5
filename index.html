@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản lý Sinh Viên</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f8f9fa; padding: 20px; }
+        .info-box {
+            background-color: #e8f2ff;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            border-left: 5px solid #0d6efd;
+        }
+        .table thead {
+            background-color: #0d6efd;
+            color: white;
+        }
+        .btn-primary { width: 100%; }
+        .action-btn { margin-right: 5px; }
+        /* Style cho ảnh avatar tròn đẹp */
+        .avatar-img {
+            width: 50px;
+            height: 50px;
+            object-fit: cover;
+            border-radius: 50%;
+            border: 1px solid #ddd;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h2 class="text-center mb-4 font-weight-bold">Quản lý Sinh Viên</h2>
+
+        <div class="info-box">
+            <h5>👥 Nhóm: Nhóm 21 - Chiều Thứ 5</h5>
+            <p><strong>Thành viên 1:</strong> Nguyễn Minh Hoàng - DH52200717 - D22_TH04</p>
+             <p><strong>Thành viên 2:</strong> Phan Nguyễn Hoài An - DH52200311 - D22_TH04</p>
+              <p><strong>Thành viên 3:</strong> Tạ Văn Chiến - LT05250029 - L25_TH01</p>
+               <p><strong>Thành viên 4:</strong> Nguyễn Thanh Tài - DH52201388 - D22_TH01</p>
+        </div>
+
+        <div class="card p-3 mb-4 shadow-sm">
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">Họ và Tên</label>
+                    <input type="text" id="name" class="form-control" placeholder="Nhập tên sinh viên">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">Link Avatar (Ảnh)</label>
+                    <input type="text" id="avatar" class="form-control" placeholder="Dán link ảnh vào đây">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">Số điện thoại</label>
+                    <input type="number" id="phone" class="form-control" placeholder="Nhập số điện thoại">
+                </div>
+                <div class="col-12 mt-3">
+                    <button onclick="addStudent()" class="btn btn-primary">Lưu Sinh Viên</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-bordered table-striped table-hover align-middle">
+                <thead class="table-primary">
+                    <tr>
+                        <th>ID</th>
+                        <th>Avatar</th>
+                        <th>Họ tên</th>
+                        <th>Số điện thoại</th>
+                        <th style="width: 150px;">Hành động</th>
+                    </tr>
+                </thead>
+                <tbody id="student-list">
+                    <tr><td colspan="5" class="text-center">Đang tải dữ liệu...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        // Link API của bạn (Giữ nguyên)
+        const API_URL = 'https://698440a6885008c00db07c35.mockapi.io/sinhvien'; 
+
+        // 1. READ: Lấy danh sách
+        async function getStudents() {
+            try {
+                const res = await fetch(API_URL);
+                const data = await res.json();
+                renderTable(data);
+            } catch (error) {
+                console.log("Lỗi gọi API: " + error);
+            }
+        }
+
+        // Hàm vẽ bảng (Đã sửa cột)
+        function renderTable(data) {
+            const tbody = document.getElementById('student-list');
+            tbody.innerHTML = ''; 
+
+            if(data.length === 0) {
+                 tbody.innerHTML = '<tr><td colspan="5" class="text-center">Chưa có dữ liệu</td></tr>';
+                 return;
+            }
+
+            // Đảo ngược để bài mới nhất lên đầu
+            data.reverse().forEach(sv => {
+                const tr = document.createElement('tr');
+                
+                // Xử lý ảnh lỗi nếu link ảnh chết
+                const imgUrl = sv.avatar ? sv.avatar : 'https://via.placeholder.com/50';
+
+                tr.innerHTML = `
+                    <td>${sv.id}</td>
+                    <td><img src="${imgUrl}" class="avatar-img" onerror="this.src='https://via.placeholder.com/50'"></td>
+                    <td>${sv.name}</td>
+                    <td>${sv.phone || 'Chưa có'}</td>
+                    <td>
+                        <button class="btn btn-warning btn-sm action-btn">Sửa</button>
+                        <button onclick="deleteStudent('${sv.id}')" class="btn btn-danger btn-sm action-btn">Xóa</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // 2. CREATE: Thêm mới (Đã sửa lấy đúng trường name, avatar, phone)
+        async function addStudent() {
+            const name = document.getElementById('name').value;
+            const avatar = document.getElementById('avatar').value;
+            const phone = document.getElementById('phone').value;
+
+            if(!name) {
+                alert("Vui lòng nhập tên sinh viên!");
+                return;
+            }
+
+            const newSV = {
+                name: name,
+                avatar: avatar,
+                phone: phone
+            };
+
+            // Nút chuyển trạng thái đang lưu
+            const btn = document.querySelector('.btn-primary');
+            btn.innerHTML = 'Đang lưu...';
+            btn.disabled = true;
+
+            await fetch(API_URL, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(newSV)
+            });
+
+            // Reset form
+            document.getElementById('name').value = '';
+            document.getElementById('avatar').value = '';
+            document.getElementById('phone').value = '';
+            
+            // Trả lại nút bấm
+            btn.innerHTML = 'Lưu Sinh Viên';
+            btn.disabled = false;
+
+            getStudents();
+        }
+
+        // 3. DELETE: Xóa
+        async function deleteStudent(id) {
+            if(confirm('Bạn có chắc muốn xóa sinh viên này?')) {
+                await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
+                getStudents();
+            }
+        }
+
+        // Chạy ngay khi mở web
+        getStudents();
+    </script>
+</body>
+</html>
